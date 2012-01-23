@@ -13,6 +13,7 @@
 	import net.flashpunk.graphics.Graphiclist;
 	import net.flashpunk.graphics.Image;
 	import net.flashpunk.graphics.Spritemap;
+	import net.flashpunk.Sfx;
 	import net.flashpunk.tweens.misc.MultiVarTween;
 	import net.flashpunk.tweens.misc.NumTween;
 	import net.flashpunk.utils.Draw;
@@ -31,6 +32,19 @@
 		[Embed(source = 'data/cogs.png')] private const SPLASH_COGS:Class;
 		[Embed(source = 'data/powered.png')] private const SPLASH_POWERED:Class;
 		[Embed(source = 'data/flashpunk.png')] private const SPLASH_FLASHPUNK:Class;
+		
+		/**
+		 * Embedded sounds.
+		 */
+		[Embed(source = 'data/boing.mp3')] private const SFX_BOING:Class;
+		[Embed(source = 'data/scribble.mp3')] private const SFX_SCRIBBLE:Class;
+
+		/**
+		 * SFX.
+		 */
+		public var volume:Number = 0;
+		public var boing:Sfx = new Sfx(SFX_BOING);
+		public var scribble:Sfx = new Sfx(SFX_SCRIBBLE);
 		
 		/**
 		 * Image objects.
@@ -60,7 +74,7 @@
 		 * @param	xPercent		position at which place the splash (percent of screen width)
 		 * @param	yPercent		position at which place the splash (percent of screen height)
 		 */
-		public function Splash(color:uint = 0xf03060, bgColor:uint = 0x252525, fadeTime:Number = 1, logoTime:Number = 4.5, poweredByTime:Number = .3, scale:Number = 1, xPercent:Number = .5, yPercent:Number = .6) 
+		public function Splash(color:uint = 0xff3366, bgColor:uint = 0x202020, fadeTime:Number = 1, logoTime:Number = 4.5, poweredByTime:Number = .5, scale:Number = 1, xPercent:Number = .5, yPercent:Number = .6) 
 		{
 			_scale = scale;
 			
@@ -117,7 +131,8 @@
 			flashpunkText.originY = flashpunkText.height / 2;
 			flashpunkText.x = 0;
 			flashpunkText.y += (cogs.scaledHeight + flashpunkText.scaledHeight) * .6;
-			flashpunkText.add("scribble", FP.frames(0, flashpunkText.frameCount - 1), 20, false);
+			var frames:Array = FP.frames(0, 38).concat(38).concat(FP.frames(39, flashpunkText.frameCount-1));
+			flashpunkText.add("scribble", frames, 40, false);
 			
 			// Set "powered by" properties
 			powered.scale = scale;
@@ -167,7 +182,7 @@
 				lines.drawMask = poweredMask;
 				FP.tween(fadeOverlay, { alpha:0 }, _fadeTime, { ease:Ease.expoIn, complete: 
 					function():void { 
-						FP.tween(fadeOverlay, { alpha:1 }, _fadeTime, { delay:_fadeTime, ease:Ease.expoOut, complete:
+						FP.tween(fadeOverlay, { alpha:1 }, _fadeTime, { delay:(_fadeTime + _poweredByTime), ease:Ease.expoOut, complete:
 							function ():void 
 							{
 								lines.drawMask = null;
@@ -195,7 +210,7 @@
 			if (fadeTween.active) fadeOverlay.alpha = fadeTween.value;
 			
 			// slow down text animation for 'PUNK'
-			flashpunkText.rate = (flashpunkText.frame >= 39 ? .3 : 1);
+			flashpunkText.rate = (flashpunkText.frame >= 38 ? .16 : 1);
 			
 			// spit a heart
 			if (cogs.frame == 3 && !_spit) {
@@ -204,6 +219,11 @@
 			}
 			if (cogs.frame != 3) _spit = false;
 			
+			// play sfx when writing 'PUNK'
+			if (flashpunkText.frame == 40 || flashpunkText.frame == 42 || flashpunkText.frame == 44 || flashpunkText.frame == 46)
+			{
+				if (!boing.playing && volume) boing.play(volume);
+			}
 		}
 		
 		/**
@@ -230,15 +250,18 @@
 		private function fadeInLogo():void
 		{	
 			cogs.visible = true;
-			fadeTween.tween(1, 0, _fadeTime, Ease.expoIn);
-			FP.alarm(_fadeTime * .8, function ():void {	// wait a bit before animating the cogs
-				flashpunkText.visible = true;
+			fadeTween.tween(1, 0, _fadeTime, Ease.cubeIn);
+			FP.alarm(_fadeTime * .3, function ():void {	// wait a bit before animating the cogs
 				cogs.play("shoot", true);
+			});
+			FP.alarm(_fadeTime * 1.3, function ():void {	// wait a bit before animating the text
+				flashpunkText.visible = true;
 				flashpunkText.play("scribble", true);
+				if (volume) scribble.play(volume);	// play scribble sfx
 			});
 			// set fade out to start after some time
 			FP.alarm(_logoTime + _fadeTime * 2, function ():void {
-				fadeTween.tween(0, 1, _fadeTime, Ease.expoOut);
+				fadeTween.tween(0, 1, _fadeTime, Ease.cubeOut);
 			});
 		}
 				
